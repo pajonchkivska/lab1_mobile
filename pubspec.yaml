@@ -33,7 +33,7 @@ dependencies:
 
 
   intl: ^0.20.2        # NEW: Для DateFormat
-
+  http: ^1.2.2
   shared_preferences: ^2.2.2 # Для TodoRepository
   flutter_localizations: 
     sdk: flutter

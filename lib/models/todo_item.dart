@@ -4,54 +4,59 @@ class TodoItem {
   final String id;
   final String title;
   final bool isCompleted;
-  final DateTime? dueTime; 
-  final bool isAllDay;    
+  final DateTime? dueTime;
+  final bool isAllDay;
 
   TodoItem({
     required this.id,
     required this.title,
     required this.isCompleted,
     this.dueTime,
-    this.isAllDay = false, 
+    this.isAllDay = false,
   });
 
-
+  /// Використовується для локального кешу (SharedPreferences)
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
         'isCompleted': isCompleted,
-        'dueTime': dueTime?.toIso8601String(), 
+        'dueTime': dueTime?.toIso8601String(),
         'isAllDay': isAllDay,
       };
 
+  /// Використовується для API (mockapi / backend)
   factory TodoItem.fromJson(Map<String, dynamic> json) {
-    DateTime? parsedTime;
-    if (json['dueTime'] != null) {
-      parsedTime = DateTime.tryParse(json['dueTime'] as String); 
+    DateTime? parsedDueTime;
+
+    final rawDueTime =
+        json['dueTime'] ?? json['due_date'] ?? json['dateTime'];
+
+    if (rawDueTime is String && rawDueTime.isNotEmpty) {
+      parsedDueTime = DateTime.tryParse(rawDueTime);
     }
-    
+
     return TodoItem(
-      id: json['id'] as String,
-      title: json['title'] as String,
-      isCompleted: json['isCompleted'] as bool,
-      dueTime: parsedTime,
-      isAllDay: json['isAllDay'] as bool? ?? false, 
+      id: (json['id'] ?? '').toString(),
+      title: (json['title'] ?? json['text'] ?? 'Untitled task').toString(),
+      isCompleted:
+          (json['isCompleted'] ?? json['completed'] ?? false) == true,
+      isAllDay: (json['isAllDay'] ?? false) == true,
+      dueTime: parsedDueTime,
     );
   }
-
 
   TodoItem copyWith({
     String? id,
     String? title,
     bool? isCompleted,
-    DateTime? dueTime, 
+    DateTime? dueTime,
     bool? isAllDay,
   }) {
     return TodoItem(
       id: id ?? this.id,
       title: title ?? this.title,
       isCompleted: isCompleted ?? this.isCompleted,
-      dueTime: dueTime, 
+      dueTime: dueTime ?? this.dueTime,
       isAllDay: isAllDay ?? this.isAllDay,
     );
   }

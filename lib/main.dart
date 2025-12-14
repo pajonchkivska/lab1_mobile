@@ -9,9 +9,11 @@ import 'screens/home.dart';
 import 'screens/login.dart';
 import 'screens/profile.dart';
 import 'screens/register.dart';
+import 'services/api_client.dart';
 import 'services/auth_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/mqtt_service.dart';
+import 'services/todo_api_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,21 +21,35 @@ void main() {
   final userRepo = LocalUserRepository();
   final authService = AuthService(repository: userRepo);
 
-  final todoRepo = TodoRepository();
+  // Один екземпляр ConnectivityService на весь app
+  final connectivity = ConnectivityService();
+
+  // API
+  final apiClient = ApiClient(baseUrl: 'https://jsonplaceholder.typicode.com/');
+  final todoApi = TodoApiService(apiClient);
+
+  // Repo (API -> cache -> UI)
+  final todoRepo = TodoRepository(
+    apiService: todoApi,
+    connectivity: connectivity,
+  );
 
   runApp(AppLoader(
     authService: authService,
     todoRepo: todoRepo,
+    connectivity: connectivity,
   ));
 }
 
 class AppLoader extends StatelessWidget {
   final AuthService authService;
   final TodoRepository todoRepo;
+  final ConnectivityService connectivity;
 
   const AppLoader({
     required this.authService,
     required this.todoRepo,
+    required this.connectivity,
     super.key,
   });
 
@@ -54,7 +70,7 @@ class AppLoader extends StatelessWidget {
         return MultiProvider(
           providers: [
             ChangeNotifierProvider(create: (_) => MqttService()),
-            ChangeNotifierProvider(create: (_) => ConnectivityService()),
+            ChangeNotifierProvider.value(value: connectivity),
           ],
           child: MyApp(
             authService: authService,
@@ -95,9 +111,7 @@ class MyApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      supportedLocales: const [
-        Locale('en', 'US'),
-      ],
+      supportedLocales: const [Locale('en', 'US')],
       locale: const Locale('en', 'US'),
       initialRoute: initialRoute,
       routes: {
