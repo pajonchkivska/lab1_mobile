@@ -3,43 +3,56 @@
 class TodoItem {
   final String id;
   final String title;
-  final DateTime? dueTime; // Optional time (для "Весь день" буде null)
   final bool isCompleted;
+  final DateTime? dueTime; 
+  final bool isAllDay;    
 
   TodoItem({
     required this.id,
     required this.title,
+    required this.isCompleted,
     this.dueTime,
-    this.isCompleted = false,
+    this.isAllDay = false, 
   });
 
-  // Метод для створення копії завдання зі зміненими полями
-  TodoItem copyWith({
-    String? title,
-    DateTime? dueTime,
-    bool? isCompleted,
-  }) {
-    return TodoItem(
-      id: id,
-      title: title ?? this.title,
-      dueTime: dueTime, // Передача dueTime прямо (бо він може бути null)
-      isCompleted: isCompleted ?? this.isCompleted,
-    );
-  }
 
-  // Перетворення в JSON для збереження
   Map<String, dynamic> toJson() => {
         'id': id,
         'title': title,
-        'dueTime': dueTime?.toIso8601String(), // Зберігаємо як рядок
         'isCompleted': isCompleted,
+        'dueTime': dueTime?.toIso8601String(), 
+        'isAllDay': isAllDay,
       };
 
-  // Створення з JSON при завантаженні
-  factory TodoItem.fromJson(Map<String, dynamic> json) => TodoItem(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        dueTime: json['dueTime'] != null ? DateTime.parse(json['dueTime'] as String) : null,
-        isCompleted: json['isCompleted'] as bool,
-      );
+  factory TodoItem.fromJson(Map<String, dynamic> json) {
+    DateTime? parsedTime;
+    if (json['dueTime'] != null) {
+      parsedTime = DateTime.tryParse(json['dueTime'] as String); 
+    }
+    
+    return TodoItem(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      isCompleted: json['isCompleted'] as bool,
+      dueTime: parsedTime,
+      isAllDay: json['isAllDay'] as bool? ?? false, 
+    );
+  }
+
+
+  TodoItem copyWith({
+    String? id,
+    String? title,
+    bool? isCompleted,
+    DateTime? dueTime, 
+    bool? isAllDay,
+  }) {
+    return TodoItem(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      isCompleted: isCompleted ?? this.isCompleted,
+      dueTime: dueTime, 
+      isAllDay: isAllDay ?? this.isAllDay,
+    );
+  }
 }

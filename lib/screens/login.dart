@@ -1,11 +1,13 @@
 // lib/screens/login.dart
 
 import 'package:flutter/material.dart';
-import '../widgets/common.dart';
+import 'package:provider/provider.dart';
 import '../services/auth_service.dart';
+import '../services/connectivity_service.dart'; 
 
 class LoginPage extends StatefulWidget {
   final AuthService authService;
+
   const LoginPage({required this.authService, super.key});
 
   @override
@@ -13,9 +15,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _emailC = TextEditingController();
-  final _passC = TextEditingController();
+  final TextEditingController _emailC = TextEditingController();
+  final TextEditingController _passC = TextEditingController();
   String? _error;
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -25,60 +28,117 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _onSignIn() async {
-    final res = await widget.authService.login(email: _emailC.text, password: _passC.text);
-    if (!res.success) {
-      setState(() => _error = res.message);
+    setState(() {
+      _error = null;
+      _isLoading = true;
+    });
+
+    final connectivityService = Provider.of<ConnectivityService>(context, listen: false);
+    
+    if (!connectivityService.isConnected) { 
+      setState(() {
+        _error = 'Please check your internet connection before signing in.';
+        _isLoading = false;
+      });
       return;
     }
+
+    final AuthResult res = await widget.authService.login(
+      email: _emailC.text,
+      password: _passC.text,
+    );
+
     if (mounted) {
-      Navigator.pushReplacementNamed(context, '/home', arguments: res.user);
+      if (res.success) {
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
+      } else {
+        setState(() {
+          _error = res.message;
+          _isLoading = false;
+        });
+      }
     }
   }
 
   @override
-  Widget build(BuildContext context) => AppScaffold(
-        title: 'Sign In', // Перекладено
-        body: Center( 
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Icon(Icons.lock_outline, size: 80, color: Theme.of(context).primaryColor),
-                const SizedBox(height: 30),
-                const Text( // Перекладено
-                  'Welcome Back',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Color(0xFF455A64)),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Sign In'),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16.0),
+                child: Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
                 ),
-                const SizedBox(height: 25),
-                
-                AppTextField(hint: 'Email', controller: _emailC, type: TextInputType.emailAddress),
-                const SizedBox(height: 15),
-                AppTextField(hint: 'Password', controller: _passC, obscure: true),
-                const SizedBox(height: 25),
-
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 15),
-                    child: Text(_error!, style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w500)),
-                  ),
-                
-                AppButton(
-                  text: 'Sign In', // Перекладено
-                  onTap: _onSignIn,
-                ),
-                
-                const SizedBox(height: 10),
-                TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/register'),
-                  child: Text( // Перекладено
-                    'Create an account',
-                    style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
+              ),
+            
+            Consumer<ConnectivityService>(
+              builder: (context, connectivityService, child) {
+                if (!connectivityService.isConnected) {
+                  return const Padding(
+                    padding: EdgeInsets.only(bottom: 16.0),
+                    child: Text(
+                      'No Internet connection. Login requires network access.',
+                      style: TextStyle(color: Colors.orange, fontStyle: FontStyle.italic),
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
             ),
-          ),
+
+            TextField(
+              controller: _emailC,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.email),
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _passC,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Password',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.lock),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _isLoading ? null : _onSignIn,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                textStyle: const TextStyle(fontSize: 18),
+              ),
+              child: _isLoading
+                  ? const SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Text('Sign In'),
+            ),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/register');
+              },
+              child: const Text("Don't have an account? Register"),
+            ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
